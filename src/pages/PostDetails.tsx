@@ -20,7 +20,6 @@ export default function PostDetails() {
 
   if (loading) {
     return (
-      // Usamos h-full ou min-h para centralizar o loading no espaço disponível
       <div className="min-h-[50vh] flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
       </div>
@@ -41,10 +40,11 @@ export default function PostDetails() {
   }
 
   return (
-    // Removemos o min-h-screen pois o App.tsx já cuida da altura total
-    <div className="bg-white font-sans text-gray-800 pb-12">
-      {/* --- BOTÃO VOLTAR (Substituto do Header antigo) --- */}
-      <div className="container mx-auto px-4 py-6">
+    <div className="bg-white font-sans text-gray-800 pb-12 overflow-x-hidden">
+      {/* --- BOTÃO VOLTAR --- */}
+      <div className="container mx-auto px-6 py-6">
+        {" "}
+        {/* Aumentei px-4 para px-6 */}
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-gray-500 hover:text-blue-600 font-bold uppercase text-xs transition"
@@ -53,7 +53,9 @@ export default function PostDetails() {
         </Link>
       </div>
 
-      <article className="max-w-4xl mx-auto px-4">
+      {/* --- ALTERAÇÃO PRINCIPAL AQUI EMBAIXO --- */}
+      {/* Mudei px-4 para px-6 (mobile) e md:px-12 (desktop) */}
+      <article className="max-w-4xl mx-auto px-6 md:px-12 w-full">
         {/* --- CABEÇALHO DO ARTIGO --- */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
@@ -63,7 +65,7 @@ export default function PostDetails() {
             </span>
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight mb-6">
+          <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight mb-6 break-words">
             {post.title}
           </h1>
 
@@ -95,9 +97,18 @@ export default function PostDetails() {
             />
           </div>
         )}
-        <div className="prose prose-lg max-w-none text-gray-800 leading-loose whitespace-pre-line text-lg">
-          {post.content}
-        </div>
+
+        {/* --- CONTEÚDO DO TEXTO --- */}
+        {/* Adicionei 'mx-auto' para garantir que o texto fique centralizado se a tela for muito grande */}
+        <div
+          className="
+            prose prose-lg max-w-none mx-auto text-gray-800 leading-loose text-lg w-full
+            break-words overflow-hidden
+            [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_iframe]:max-w-full
+            [&_pre]:whitespace-pre-wrap [&_pre]:break-words
+          "
+          dangerouslySetInnerHTML={{ __html: post.content }}
+        />
       </article>
     </div>
   );

@@ -1,3 +1,5 @@
+import ReactQuill from "react-quill-new"; // <--- MUDANÇA AQUI (Biblioteca Nova)
+import "react-quill-new/dist/quill.snow.css"; // <--- MUDANÇA AQUI (CSS Novo)
 import { useEffect, useState, FormEvent, ChangeEvent } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import api from "../services/api";
@@ -10,6 +12,37 @@ import {
 } from "lucide-react";
 import { Post, Category } from "../types";
 
+// --- CONFIGURAÇÕES DO EDITOR ---
+const modules = {
+  toolbar: [
+    [{ header: [1, 2, false] }],
+    ["bold", "italic", "underline", "strike", "blockquote"],
+    [
+      { list: "ordered" },
+      { list: "bullet" },
+      { indent: "-1" },
+      { indent: "+1" },
+    ],
+    ["link", "image"],
+    ["clean"],
+  ],
+};
+
+const formats = [
+  "header",
+  "bold",
+  "italic",
+  "underline",
+  "strike",
+  "blockquote",
+  "list",
+  "bullet",
+  "indent",
+  "link",
+  "image",
+];
+// ------------------------------
+
 export default function PostForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -18,7 +51,7 @@ export default function PostForm() {
   // Estados dos campos
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [categoryId, setCategoryId] = useState<number | null>(null); // ID selecionado
+  const [categoryId, setCategoryId] = useState<number | null>(null);
 
   // Estados de Imagem
   const [imageMode, setImageMode] = useState<"upload" | "url">("upload");
@@ -31,7 +64,7 @@ export default function PostForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // 1. Carregar lista de categorias para o <select>
+    // 1. Carregar lista de categorias
     api.get("/categories").then((res) => {
       const data = res.data.content ? res.data.content : res.data;
       setCategories(data);
@@ -41,27 +74,13 @@ export default function PostForm() {
     if (isEditing) {
       api.get(`/posts/${id}`).then((res) => {
         const post: Post = res.data;
-
         setTitle(post.title);
-        setContent(post.content);
-
-        // --- AQUI ESTAVA O PROBLEMA (Estava comentado) ---
-        // Agora verificamos se o backend mandou o ID e setamos o estado
-        if (post.categoryId) {
-          setCategoryId(post.categoryId);
-        }
-        // -------------------------------------------------
-
+        setContent(post.content); // O Quill recebe o HTML aqui
+        if (post.categoryId) setCategoryId(post.categoryId);
         if (post.imageUrl) {
           setPreviewUrl(post.imageUrl);
           setImageUrlInput(post.imageUrl);
-
-          // Lógica inteligente para definir a aba correta
-          if (post.imageUrl.startsWith("http")) {
-            setImageMode("url");
-          } else {
-            setImageMode("upload");
-          }
+          setImageMode(post.imageUrl.startsWith("http") ? "url" : "upload");
         }
       });
     }
@@ -88,10 +107,9 @@ export default function PostForm() {
 
     try {
       const formData = new FormData();
-
       const postData: any = {
         title,
-        content,
+        content, // Envia o HTML gerado pelo editor
         category: categoryId ? { id: categoryId } : null,
       };
 
@@ -152,13 +170,11 @@ export default function PostForm() {
               type="text"
               required
               className="w-full p-3 border border-gray-300 rounded focus:border-blue-600 outline-none text-lg"
-              placeholder="Ex: Novo console da Nintendo é anunciado"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
 
-          {/* O value={categoryId} aqui agora vai bater com o ID que veio do useEffect */}
           <div>
             <label className="block text-gray-700 font-bold mb-2">
               Categoria
@@ -177,6 +193,7 @@ export default function PostForm() {
             </select>
           </div>
 
+          {/* Area da Imagem (Upload ou URL) */}
           <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
             <label className="block text-gray-700 font-bold mb-4">
               Imagem de Capa
@@ -185,14 +202,14 @@ export default function PostForm() {
               <button
                 type="button"
                 onClick={() => setImageMode("upload")}
-                className={`flex-1 py-2 flex items-center justify-center gap-2 rounded transition font-bold text-sm uppercase ${imageMode === "upload" ? "bg-[#000914] text-white shadow-lg" : "bg-white text-gray-500 border hover:bg-gray-100"}`}
+                className={`flex-1 py-2 flex items-center justify-center gap-2 rounded transition font-bold text-sm uppercase ${imageMode === "upload" ? "bg-[#000914] text-white" : "bg-white text-gray-500 border"}`}
               >
                 <Upload size={16} /> Enviar Arquivo
               </button>
               <button
                 type="button"
                 onClick={() => setImageMode("url")}
-                className={`flex-1 py-2 flex items-center justify-center gap-2 rounded transition font-bold text-sm uppercase ${imageMode === "url" ? "bg-[#000914] text-white shadow-lg" : "bg-white text-gray-500 border hover:bg-gray-100"}`}
+                className={`flex-1 py-2 flex items-center justify-center gap-2 rounded transition font-bold text-sm uppercase ${imageMode === "url" ? "bg-[#000914] text-white" : "bg-white text-gray-500 border"}`}
               >
                 <LinkIcon size={16} /> Link Externo
               </button>
@@ -201,80 +218,67 @@ export default function PostForm() {
             <div className="flex flex-col md:flex-row gap-6 items-start">
               <div className="flex-1 w-full">
                 {imageMode === "upload" ? (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-white hover:border-blue-500 transition cursor-pointer relative group">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-white relative">
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleFileChange}
                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                     />
-                    <Upload
-                      className="mx-auto text-gray-400 mb-2 group-hover:text-blue-500"
-                      size={32}
-                    />
+                    <Upload className="mx-auto text-gray-400 mb-2" size={32} />
                     <p className="text-gray-500 text-sm">
-                      Arraste ou clique para selecionar
+                      Clique para selecionar
                     </p>
                   </div>
                 ) : (
-                  <div>
-                    <input
-                      type="url"
-                      placeholder="Cole o link da imagem aqui (https://...)"
-                      className="w-full p-3 border border-gray-300 rounded focus:border-blue-600 outline-none font-mono text-sm"
-                      value={imageUrlInput}
-                      onChange={handleUrlChange}
-                    />
-                    <p className="text-xs text-gray-400 mt-2">
-                      Dica: Use imagens do Unsplash ou Pexels.
-                    </p>
-                  </div>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    className="w-full p-3 border border-gray-300 rounded"
+                    value={imageUrlInput}
+                    onChange={handleUrlChange}
+                  />
                 )}
               </div>
-
-              <div className="w-full md:w-48 h-32 bg-gray-200 rounded-lg overflow-hidden border border-gray-300 flex items-center justify-center shrink-0">
+              <div className="w-full md:w-48 h-32 bg-gray-200 rounded-lg overflow-hidden border flex items-center justify-center shrink-0">
                 {previewUrl ? (
                   <img
                     src={previewUrl}
-                    alt="Preview"
                     className="w-full h-full object-cover"
+                    alt="Preview"
                   />
                 ) : (
-                  <div className="text-gray-400 flex flex-col items-center">
-                    <ImageIcon size={24} />
-                    <span className="text-xs mt-1">Sem imagem</span>
-                  </div>
+                  <ImageIcon size={24} className="text-gray-400" />
                 )}
               </div>
             </div>
           </div>
 
-          <div>
+          {/* --- EDITOR DE TEXTO RICO --- */}
+          <div className="mb-12">
             <label className="block text-gray-700 font-bold mb-2">
               Conteúdo da Notícia
             </label>
-            <textarea
-              required
-              rows={12}
-              className="w-full p-4 border border-gray-300 rounded focus:border-blue-600 outline-none text-gray-700 leading-relaxed font-mono"
-              placeholder="Escreva seu texto aqui..."
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-            ></textarea>
+            <div className="h-80 bg-white pb-10 sm:pb-0">
+              <ReactQuill
+                theme="snow"
+                value={content}
+                onChange={setContent}
+                modules={modules}
+                formats={formats}
+                className="h-full"
+                placeholder="Escreva sua notícia aqui..."
+              />
+            </div>
           </div>
 
           <div className="flex justify-end pt-4">
             <button
               type="submit"
               disabled={loading}
-              className="bg-blue-600 text-white px-8 py-3 rounded font-bold hover:bg-blue-700 transition flex items-center gap-2 shadow-lg disabled:opacity-50"
+              className="bg-blue-600 text-white px-8 py-3 rounded font-bold hover:bg-blue-700 transition flex items-center gap-2"
             >
-              <Save size={20} />{" "}
-              {loading
-                ? "Salvando..."
-                : isEditing
-                  ? "Atualizar Notícia"
-                  : "Publicar Notícia"}
+              <Save size={20} /> {loading ? "Salvando..." : "Publicar Notícia"}
             </button>
           </div>
         </form>
